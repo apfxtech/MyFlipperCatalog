@@ -1,0 +1,47 @@
+name: "Catalog"
+run-name: "Catalog ${{ github.sha }}"
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  catalog:
+    if: ${{ github.server_url == 'https://github.com' }}
+    name: Build apps and regenerate catalog.bin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up ufbt SDK (dev channel)
+        uses: flipperdevices/flipperzero-ufbt-action@v0.1
+        with:
+          task: setup
+          sdk-channel: dev
+          sdk-index-url: https://up.unleashedflip.com/directory.json
+
+      - name: Build apps and generate catalog
+        run: python3 .github/scripts/build.py
+
+      - name: Commit catalog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add catalog.bin
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: update catalog.bin [skip ci]"
+            git push origin HEAD:main
+          fi

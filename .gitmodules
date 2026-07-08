@@ -1,0 +1,3 @@
+[submodule "apps/flipcraft"]
+	path = apps/flipcraft
+	url = https://github.com/apfxtech/Flipcraft.git
