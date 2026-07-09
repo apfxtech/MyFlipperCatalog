@@ -1,6 +1,6 @@
 # MyFlipperCatalog
 
-Catalog of Flipper Zero apps kept as git submodules in [apps/](apps/). CI builds every submodule with `ufbt` and regenerates [catalog.bin](catalog.bin) in the repository root from the apps that built successfully.
+Catalog of Flipper Zero apps kept as git submodules in [apps/](apps/). CI builds every submodule with `ufbt`, regenerates [catalog.bin](catalog.bin) in the repository root from the apps that built successfully, and uploads each built `.fap` to the rolling `catalog` release.
 
 ## Adding an app
 
@@ -8,7 +8,15 @@ Catalog of Flipper Zero apps kept as git submodules in [apps/](apps/). CI builds
 git submodule add <url> apps/<name>
 ```
 
-The app must contain `application.fam` with `appid`, `name`, `fap_version` and a 10x10 `fap_icon`.
+The app must contain `application.fam` with `appid`, `name`, `fap_version`, `fap_category` and a 10x10 `fap_icon`.
+
+## Releases
+
+Every successful build is published as an asset of the rolling `catalog` release, named `<appid>.fap`:
+
+```
+https://github.com/apfxtech/MyFlipperCatalog/releases/download/catalog/<appid>.fap
+```
 
 ## catalog.bin format
 
@@ -19,7 +27,7 @@ Little-endian. Fixed-size header and records, variable-length strings in a pool 
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 4 | magic `"FCAT"` |
-| 4 | 1 | format version = 1 |
+| 4 | 1 | format version = 2 |
 | 5 | 1 | record size = 36 |
 | 6 | 2 | u16 app count |
 | 8 | 4 | u32 records offset = 16 |
@@ -35,8 +43,28 @@ Little-endian. Fixed-size header and records, variable-length strings in a pool 
 | 12 | 1 | u8 id length |
 | 13 | 1 | u8 name length |
 | 14 | 1 | u8 version length |
-| 15 | 1 | reserved = 0 |
+| 15 | 1 | u8 category |
 | 16 | 20 | icon 10x10, 1 bpp XBM: 2 bytes per row, LSB first, bit set = pixel on |
+
+### Category enum
+
+Mapped from `fap_category` (case/spacing/dash-insensitive); unknown values fall back to Tools.
+
+| Value | Category |
+|---|---|
+| 0 | Bluetooth |
+| 1 | Games |
+| 2 | GPIO |
+| 3 | iButton |
+| 4 | Infrared |
+| 5 | Media |
+| 6 | NFC |
+| 7 | RFID |
+| 8 | Scripts |
+| 9 | Sub-GHz |
+| 10 | Tools |
+| 11 | USB |
+| 12 | Settings |
 
 ### String pool
 
@@ -52,7 +80,7 @@ typedef struct __attribute__((packed)) {
     uint8_t id_len;
     uint8_t name_len;
     uint8_t ver_len;
-    uint8_t reserved;
+    uint8_t category;
     uint8_t icon[20];
 } CatalogRecord;
 
@@ -65,3 +93,8 @@ read(name, rec.name_len + 1);
 
 canvas_draw_xbm(canvas, x, y, 10, 10, rec.icon);
 ```
+
+### Format history
+
+* v2 — the record byte at offset 15 (reserved in v1) became the category enum; readers must reject other versions.
+* v1 — initial format, no category.

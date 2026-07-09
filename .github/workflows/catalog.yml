@@ -34,6 +34,18 @@ jobs:
       - name: Build apps and generate catalog
         run: python3 .github/scripts/build.py
 
+      - name: Publish fap release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view catalog >/dev/null 2>&1; then
+            gh release create catalog --title "Catalog builds" \
+              --notes "Rolling release: latest successful build of every catalog app."
+          fi
+          if ls dist/*.fap >/dev/null 2>&1; then
+            gh release upload catalog dist/*.fap --clobber
+          fi
+
       - name: Commit catalog
         run: |
           git config user.name "github-actions[bot]"
